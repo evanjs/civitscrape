@@ -1,7 +1,4 @@
 import argparse
-import os
-import shutil
-import tempfile
 from xml.etree import ElementTree
 import pathlib
 import requests
@@ -14,7 +11,6 @@ from tqdm import tqdm
 
 base_url = "https://civitai.com"
 
-# payload = {}
 headers = {}
 cookies = {}
 names = [
@@ -149,13 +145,13 @@ class Civit:
         final_download_path = download_path.joinpath(filename.__str__().replace('"', ''))
         fname = final_download_path.absolute().__str__()
         if final_download_path.exists():
-            print(f'{fname} already exists! Exiting without downloading ...')
-            exit(0)
+            print(f'{fname} already exists! Not downloading... ...')
+            return
         else:
             print(f'Touched file destination {fname}')
             final_download_path.touch()
         mess = f"Final path {fname} does not exist!"
-        assert(final_download_path.exists(), mess)
+        assert final_download_path.exists(), mess
         leng = int(response.headers.get('content-length', 0))
         units = 1024
         print(f"Attempting to download {model.model_type} model {model.model_name} ({model.model_id})")
@@ -172,7 +168,8 @@ class Civit:
                 bar.update(size)
         pass
         # print(f'Successfully downloaded model {model.primary_download_id} to temporary file {temp_filename}')
-        print(f'Successfully downloaded {model.model_type} model {model.model_name} ({model.primary_download_id}) to {final_download_path}')
+        print(
+            f'Successfully downloaded {model.model_type} model {model.model_name} ({model.primary_download_id}) to {final_download_path}')
         # print(f'Attempting to move temporary file {tempfile} to {final_download_path} ...')
         # shutil.move(file, final_download_path)
 
@@ -183,23 +180,59 @@ class Civit:
         self.update_model_type()
         self.update_primary_download()
 
+    def clear_details(self):
+        self.model.__init__()
+        self.tree = None
+
 
 # Get main model page from ID (HTML)
 #   Get type of model
 #   Get id of model
 #   Get name of model
 
-def main():
-    parser = argparse.ArgumentParser(prog = 'CivitAI Scraper')
-    parser.add_argument('file_id', type=int)
-    res = parser.parse_args()
-    file_id = res.file_id
-    assert(file_id is not None, 'File ID is required!')
+ids = []
+
+
+def read_ids(file_name):
+    with open(file_name, 'rb') as f:
+        lines = [int(l.strip()) for l in f.readlines()]
+        ids.extend(lines)
+    pass
+
+
+def download_multiple():
+    c = Civit()
+    print('Processing multiple downloads...')
+    for i in ids:
+        mess = f"{i} is not a valid number!"
+        assert i is not None, mess
+        print(f"Getting model {i} ...")
+        c.update_model_details(i)
+        c.download_model()
+        c.clear_details()
+    pass
+
+
+def download_single(file_id):
     c = Civit()
     c.update_model_details(file_id)
-    model = c.model
     c.download_model()
-    print(model)
+    pass
+
+
+def main():
+    parser = argparse.ArgumentParser(prog='CivitAI Scraper')
+    parser.add_argument('-i', '--file_id')
+    parser.add_argument("-f", "--file")
+    res = parser.parse_args()
+    file_id = res.file_id
+    file_name = res.file
+    assert not (file_id is None) and (file_name is None, 'File ID or ID File Name is required!')
+    if file_name is not None:
+        read_ids(file_name)
+        download_multiple()
+    else:
+        download_single(file_id)
 
 
 if '__main__' in __name__:
