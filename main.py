@@ -1,4 +1,5 @@
 import argparse
+import typing
 from xml.etree import ElementTree
 import pathlib
 import requests
@@ -145,6 +146,7 @@ class Civit:
         final_download_path = download_path.joinpath(filename.__str__().replace('"', ''))
         fname = final_download_path.absolute().__str__()
         if final_download_path.exists():
+            model.already_exists = True
             print(f'{fname} already exists! Not downloading... ...')
             return
         else:
@@ -203,13 +205,16 @@ def read_ids(file_name):
 def download_multiple():
     c = Civit()
     print('Processing multiple downloads...')
+    done_first = False
     for i in ids:
+        print(f"Getting model {i} ...")
+        if not done_first and c.model.model_id is not None:
+            c.clear_details()
         mess = f"{i} is not a valid number!"
         assert i is not None, mess
-        print(f"Getting model {i} ...")
         c.update_model_details(i)
         c.download_model()
-        c.clear_details()
+        done_first = True
     pass
 
 
@@ -224,15 +229,28 @@ def main():
     parser = argparse.ArgumentParser(prog='CivitAI Scraper')
     parser.add_argument('-i', '--file_id')
     parser.add_argument("-f", "--file")
+    parser.add_argument("-m", "--multi", type=int, nargs='*')
     res = parser.parse_args()
     file_id = res.file_id
-    file_name = res.file
-    assert not (file_id is None) and (file_name is None, 'File ID or ID File Name is required!')
-    if file_name is not None:
-        read_ids(file_name)
+    print(f'File ID: {file_id}')
+    file_name = '' or res.file
+    print(f'File Name: {file_name}')
+    file_ids: list = res.multi or []
+    print(f'File IDs: {file_ids}')
+    assert not (file_id is not None or len(file_ids) > 0) or (file_name is not ''),\
+        'File ID or ID File Name is required!'
+    if file_ids is not None:
+        ids.extend(file_ids)
+        print(f'ids: {ids}')
         download_multiple()
+        exit(0)
     else:
-        download_single(file_id)
+        if file_name is not None:
+            read_ids(file_name)
+            print(f'ids: {ids}')
+            download_multiple()
+        else:
+            download_single(file_id)
 
 
 if '__main__' in __name__:
