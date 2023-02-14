@@ -133,7 +133,7 @@ class Civit:
                 next_path = pathlib.Path('embeddings')
             case r"\s*Checkpoint.*":
                 next_path = pathlib.Path('models/Stable-diffusion')
-            case r'Hyper network':
+            case r'Hypernetwork':
                 next_path = pathlib.Path('models/hypernetworks')
             case r"Aesthetic Gradient":
                 next_path = pathlib.Path('models/aesthetic_embeddings')
