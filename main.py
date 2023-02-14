@@ -1,4 +1,5 @@
 import argparse
+import os.path
 from xml.etree import ElementTree
 import pathlib
 
@@ -50,8 +51,8 @@ def update_auth(response: requests.Response):
 class Civit:
     tree: ElementTree = ElementTree.fromstring('<html></html>')
     download_xpath = '//*[@id="__next"]/div/div/main/div/div[2]/div[1]/div/div[1]/div[1]/div[1]/a'
-    fallback_sd_directory = pathlib.Path('G:/Downloads/stable-diffusion')
-    base_sd_directory: pathlib.Path = fallback_sd_directory
+    sd_fallback_directory: pathlib.Path
+    sd_base_directory: pathlib.Path
     header_xpath = '//h1/text()'
     model_type_xpath = '//*[@id="mantine-r35-dropdown"]/div[1]/div[4]/div[5]/label//text()'
     model_primary_download_selector = '.mantine-Stack-root .mantine-UnstyledButton-root.mantine-Button-root'
@@ -59,6 +60,8 @@ class Civit:
 
     def __init__(self):
         self.load_env()
+        self.sd_base_directory =\
+            self.sd_base_directory if self.sd_base_directory is not None else self.sd_fallback_directory
 
     def init_tree(self, soup: BeautifulSoup):
         self.tree: ElementTree = etree.HTML(str(soup))
@@ -95,20 +98,29 @@ class Civit:
 
     def load_env(self):
         dotenv.load_dotenv()
-        sd_dir_var = environ.get('base_sd_directory')
-        if sd_dir_var is not None:
-            print(f'Found SD directory: {sd_dir_var}')
-            self.base_sd_directory = pathlib.Path(sd_dir_var)
+        sd_base_dir_var = environ.get('sd_base_directory')
+        if sd_base_dir_var is not None:
+            print(f'Found SD directory: {sd_base_dir_var}')
+            self.sd_base_directory = pathlib.Path(sd_base_dir_var)
         else:
-            print(f'Failed to find base SD directory variable "base_sd_directory". Using fallback: {sd_dir_var}')
+            print(f'Failed to find base SD directory variable "sd_base_directory". Using fallback: {sd_base_dir_var}')
+
+        sd_fallback_dir_var = environ.get('sd_fallback_directory')
+        if sd_fallback_dir_var is not None:
+            print(f'Found SD fallback directory: {sd_fallback_dir_var}')
+            self.sd_fallback_directory = pathlib.Path(sd_fallback_dir_var)
+        else:
+            print(f'Failed to find SD fallback directory variable "sd_fallback_dir". Using downloads directory...')
+            self.sd_fallback_directory = pathlib.Path(os.path.join(pathlib.Path.home(), "Downloads"))
+
         dotenv.load_dotenv(dotenv_path='.cookies.env')
         for name in names:
             value = environ.get(name)
             cookies[name] = value
 
     def init_dir(self):
-        if not self.fallback_sd_directory.exists():
-            self.fallback_sd_directory.mkdir(parents=True)
+        if not self.sd_fallback_directory.exists():
+            self.sd_fallback_directory.mkdir(parents=True)
 
     def get_model_download_directory(self, model: Model):
         next_path: pathlib.Path | None = None
@@ -130,12 +142,12 @@ class Civit:
                 pass
         pass
         if next_path is not None:
-            print(f'Found path {next_path}')
-            final_path = self.base_sd_directory.joinpath(next_path)
-            print(f'Using directory {final_path} for download')
+            print(f'Found path "{next_path}"')
+            final_path = self.sd_base_directory.joinpath(next_path)
+            print(f'Using directory "{final_path}" for download')
         else:
-            print(f'Failed to find path {next_path} under {self.base_sd_directory}. Falling back to base directory')
-            final_path = self.base_sd_directory
+            print(f'Failed to find path "{next_path}" under "{self.sd_base_directory}". Falling back to base directory')
+            final_path = self.sd_base_directory
 
         return final_path
 
@@ -180,8 +192,8 @@ class Civit:
         # TODO: investigate using basic logging rather than prints
         # print(f'Successfully downloaded model {model.primary_download_id} to temporary file {temp_filename}')
         print(
-            f'Successfully downloaded {model.model_type} model {model.model_name} ({model.primary_download_id}) to {final_download_path}')
-        # print(f'Attempting to move temporary file {tempfile} to {final_download_path} ...')
+            f'Successfully downloaded "{model.model_type}" model "{model.model_name}" ({model.primary_download_id}) to "{final_download_path}"')
+        # print(f'Attempting to move temporary file "{tempfile}" to "{final_download_path}" ...')
         # shutil.move(file, final_download_path)
 
     def update_model_details(self, model_id):
