@@ -1,5 +1,4 @@
 import argparse
-import typing
 from xml.etree import ElementTree
 import pathlib
 import requests
@@ -44,8 +43,6 @@ def get_download_filename(response: requests.Response) -> str:
 
 def update_auth(response: requests.Response):
     cookies.update(response.cookies)
-    token = response.headers.get('__Secure-civitai-token')
-    # headers['__Secure-civitai-token'] = token
 
 
 class Civit:
@@ -102,18 +99,14 @@ class Civit:
         for name in names:
             value = environ.get(name)
             cookies[name] = value
-            # headers[name] = value
-            # print(f'Header for {name} set to {value}')
 
     def init_dir(self):
         if not self.fallback_sd_directory.exists():
             self.fallback_sd_directory.mkdir(parents=True)
 
-    # def get_download_name(self):
-    #     pass
-
     def get_model_download_directory(self, model: Model):
         next_path: pathlib.Path | None = None
+        print(f'Attempting to parse model type {model.model_type}')
         match model.model_type:
             case 'LORA':
                 next_path = pathlib.Path('models/Lora')
@@ -127,11 +120,11 @@ class Civit:
                 next_path = pathlib.Path('models/aesthetic_embeddings')
         pass
         if next_path is not None:
-            # print(f'Found path {next_path}')
+            print(f'Found path {next_path}')
             final_path = self.base_sd_directory.joinpath(next_path)
-            # print(f'Using directory {final_path} for download')
+            print(f'Using directory {final_path} for download')
         else:
-            # print(f'Failed to find path {next_path} under {self.base_sd_directory}. Falling back to base directory')
+            print(f'Failed to find path {next_path} under {self.base_sd_directory}. Falling back to base directory')
             final_path = self.base_sd_directory
 
         return final_path
@@ -187,11 +180,6 @@ class Civit:
         self.tree = None
 
 
-# Get main model page from ID (HTML)
-#   Get type of model
-#   Get id of model
-#   Get name of model
-
 ids = []
 
 
@@ -227,30 +215,25 @@ def download_single(file_id):
 
 def main():
     parser = argparse.ArgumentParser(prog='CivitAI Scraper')
-    parser.add_argument('-i', '--file_id')
+    parser.add_argument("-i", "--id", type=int, nargs='*')
     parser.add_argument("-f", "--file")
-    parser.add_argument("-m", "--multi", type=int, nargs='*')
     res = parser.parse_args()
-    file_id = res.file_id
-    print(f'File ID: {file_id}')
-    file_name = '' or res.file
-    print(f'File Name: {file_name}')
-    file_ids: list = res.multi or []
+    file_ids: list = res.id or []
+    file_name = res.file
     print(f'File IDs: {file_ids}')
-    assert not (file_id is not None or len(file_ids) > 0) or (file_name is not ''),\
-        'File ID or ID File Name is required!'
+    print(f'File Name: {file_name}')
+    print(f'length of file_ids: {len(file_ids)}')
+    print(f'file_name is not None: {file_name is not None}')
+    assert not (len(file_ids) == 0 and (file_name is None)), 'Please provide one or more file IDs or a file ID name!'
     if file_ids is not None:
         ids.extend(file_ids)
         print(f'ids: {ids}')
         download_multiple()
         exit(0)
-    else:
-        if file_name is not None:
-            read_ids(file_name)
-            print(f'ids: {ids}')
-            download_multiple()
-        else:
-            download_single(file_id)
+    elif file_name is not None:
+        read_ids(file_name)
+        print(f'ids: {ids}')
+        download_multiple()
 
 
 if '__main__' in __name__:
