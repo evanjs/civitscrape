@@ -29,11 +29,12 @@ names = [
 
 class Model:
     model_type: str = ''
-    model_id: int = 0,
-    model_name: str = '',
+    model_id: int = 0
+    model_name: str = ''
     webpage: str | BeautifulSoup = ''
-    primary_download_url: str = '',
+    primary_download_url: str = ''
     primary_download_id: int | None
+    file_id_override: int | None = None
 
     def __str__(self) -> str:
         return f'{self.model_name} [{self.model_id}] — {self.model_type}'
@@ -60,7 +61,7 @@ class Civit:
 
     def __init__(self):
         self.load_env()
-        self.sd_base_directory =\
+        self.sd_base_directory = \
             self.sd_base_directory if self.sd_base_directory is not None else self.sd_fallback_directory
 
     def init_tree(self, soup: BeautifulSoup):
@@ -82,8 +83,12 @@ class Civit:
     #  This should be made more obvious to the user,
     #  and the scraping should exit early as soon as this can be determined
     def update_primary_download(self):
-        self.model.primary_download_url = f"{base_url}{self.model.webpage.select_one(self.model_primary_download_selector).get('href')}"
-        self.model.primary_download_id = self.model.primary_download_url.split('/')[-1]
+        if self.model.file_id_override is not None:
+            self.model.primary_download_id = self.model.file_id_override
+            self.model.primary_download_url = f'https://civitai/api/download/models/{self.model.file_id_override}'
+        else:
+            self.model.primary_download_url = f"{base_url}{self.model.webpage.select_one(self.model_primary_download_selector).get('href')}"
+            self.model.primary_download_id = self.model.primary_download_url.split('/')[-1]
 
     def update_model_type(self):
         model_type_box = list(self.model.webpage.select_one('div.mantine-Stack-root div tbody > tr, td').children)
@@ -236,8 +241,9 @@ def download_multiple():
     pass
 
 
-def download_single(file_id):
+def download_single(file_id, file_id_override):
     c = Civit()
+    c.model.file_id_override = file_id_override
     c.update_model_details(file_id)
     c.download_model()
     pass
@@ -247,7 +253,9 @@ def main():
     parser = argparse.ArgumentParser(prog='CivitAI Scraper')
     parser.add_argument("-i", "--id", type=int, nargs='*')
     parser.add_argument("-f", "--file")
+    parser.add_argument("-o", "--override")
     res = parser.parse_args()
+    override = res.override
     file_ids: list = res.id or []
     file_name = res.file
     print(f'File IDs: {file_ids}')
@@ -255,6 +263,11 @@ def main():
     print(f'length of file_ids: {len(file_ids)}')
     print(f'file_name is not None: {file_name is not None}')
     assert not (len(file_ids) == 0 and (file_name is None)), 'Please provide one or more file IDs or a file ID name!'
+    if override is not None:
+        print(f'Override: {override}')
+        ids.extend(file_ids)
+        print(f'ids: {ids}')
+        download_single(ids[0], file_id_override=override)
     if file_ids is not None:
         ids.extend(file_ids)
         print(f'ids: {ids}')
