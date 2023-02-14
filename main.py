@@ -1,6 +1,8 @@
 import argparse
 from xml.etree import ElementTree
 import pathlib
+
+import regex_spm
 import requests
 import dotenv
 from os import environ
@@ -107,17 +109,21 @@ class Civit:
     def get_model_download_directory(self, model: Model):
         next_path: pathlib.Path | None = None
         print(f'Attempting to parse model type {model.model_type}')
-        match model.model_type:
-            case 'LORA':
+        r_match = regex_spm.fullmatch_in(model.model_type)
+        match r_match:
+            case r"LORA":
                 next_path = pathlib.Path('models/Lora')
-            case 'Textual Inversion':
+            case r"Textual Inversion":
                 next_path = pathlib.Path('embeddings')
-            case 'Checkpoint':
-                next_path = pathlib.Path('Stable-diffusion')
-            case 'Hypernetwork':
+            case r"\s*Checkpoint.*":
+                next_path = pathlib.Path('models/Stable-diffusion')
+            case r'Hyper network':
                 next_path = pathlib.Path('models/hypernetworks')
-            case 'Aesthetic Gradient':
+            case r"Aesthetic Gradient":
                 next_path = pathlib.Path('models/aesthetic_embeddings')
+            case _:
+                print(f"Unhandled model type: {model.model_type}. I don't know where to download this...")
+                pass
         pass
         if next_path is not None:
             print(f'Found path {next_path}')
