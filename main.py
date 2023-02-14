@@ -74,6 +74,10 @@ class Civit:
         self.model.webpage = soup
         self.init_tree(self.model.webpage)
 
+    # TODO: Better handle NSFW pages if not logged in
+    #  If not logged in, NSFW pages will not have any scrapable content
+    #  This should be made more obvious to the user,
+    #  and the scraping should exit early as soon as this can be determined
     def update_primary_download(self):
         self.model.primary_download_url = f"{base_url}{self.model.webpage.select_one(self.model_primary_download_selector).get('href')}"
         self.model.primary_download_id = self.model.primary_download_url.split('/')[-1]
@@ -156,7 +160,11 @@ class Civit:
         leng = int(response.headers.get('content-length', 0))
         units = 1024
         print(f"Attempting to download {model.model_type} model {model.model_name} ({model.model_id})")
+
+        # TODO: investigate temporary download approach
+        #  This would involve downloading to a temporary file, then later moving the completed file to a final path
         # tp = tempfile.TemporaryFile()
+
         with open(fname, 'wb') as file, tqdm(
                 desc=fname,
                 total=leng,
@@ -168,6 +176,8 @@ class Civit:
                 size = file.write(data)
                 bar.update(size)
         pass
+
+        # TODO: investigate using basic logging rather than prints
         # print(f'Successfully downloaded model {model.primary_download_id} to temporary file {temp_filename}')
         print(
             f'Successfully downloaded {model.model_type} model {model.model_name} ({model.primary_download_id}) to {final_download_path}')
@@ -196,6 +206,8 @@ def read_ids(file_name):
     pass
 
 
+# TODO: handle pages with multiple downloadable files.
+#  Do we ask the user? Do we support multi-selection for the response?
 def download_multiple():
     c = Civit()
     print('Processing multiple downloads...')
